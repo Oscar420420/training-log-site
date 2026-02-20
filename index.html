@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Training Log + Video Vault</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">TL</div>
+      <div class="brand-text">
+        <div class="title">Training Log + Video Vault</div>
+        <div class="subtitle">Period → Block → Week → Day → Exercise</div>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button id="btnHome" class="btn secondary" title="Go to overview">Overview</button>
+      <button id="btnExport" class="btn" title="Download your current data as JSON">Export JSON</button>
+      <label class="btn secondary filebtn" title="Load a JSON file to replace data (or merge)">
+        Import JSON
+        <input id="fileImport" type="file" accept=".json,application/json" />
+      </label>
+      <button id="btnResetLocal" class="btn danger" title="Clear local changes (keeps the base JSON file)">Reset local changes</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-title">Navigate</div>
+
+        <div class="field">
+          <label>Search</label>
+          <input id="searchInput" type="search" placeholder="e.g. squat, week 4, DL..." />
+          <div class="hint">Search is across period/block/week/day/exercise.</div>
+        </div>
+
+        <div class="field">
+          <label>Period</label>
+          <select id="periodSelect"></select>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label>Block</label>
+            <select id="blockSelect"></select>
+          </div>
+          <div class="field">
+            <label>Week</label>
+            <select id="weekSelect"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Day</label>
+          <select id="daySelect"></select>
+        </div>
+
+        <div class="field">
+          <label>Exercise</label>
+          <select id="exerciseSelect"></select>
+          <div id="linkPreview" class="hint mono"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Role (for writing)</label>
+          <div class="role-toggle">
+            <button id="roleLifter" class="pill active">Lifter</button>
+            <button id="roleCoach" class="pill">Coach</button>
+          </div>
+          <div class="hint">Role only affects which comment box you focus; both fields are always saved.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Manage structure</label>
+          <div class="hint">Add/remove periods, blocks, weeks, days, and exercises directly in the site. Changes are saved locally (and can be exported as JSON).</div>
+          <div class="row">
+            <button id="btnManage" class="btn secondary">Open manager</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Weekly workflow</div>
+        <ol class="small">
+          <li>Open the right exercise page via Excel link.</li>
+          <li>Paste video URL(s) + write lifter/coach comments.</li>
+          <li>Hit <b>Export JSON</b> occasionally as a backup.</li>
+        </ol>
+        <div class="hint">Edits are saved in your browser (LocalStorage) automatically.</div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div id="toast" class="toast hidden"></div>
+
+      <div id="overviewView" class="view">
+        <div class="card">
+          <div class="card-title">Overview</div>
+          <div class="card-body">
+            <p>
+              This site is built for fast navigation from Excel → specific exercise entry.
+              Each entry holds videos + comments from lifter & coach.
+            </p>
+            <div class="kpis" id="kpis"></div>
+            <div class="divider"></div>
+            <div class="hint">
+              Tip: create one Excel column called <span class="mono">URL</span> with links like
+              <span class="mono">https://YOURDOMAIN/#/p/serie-1-2026/b/1/w/1/d/1/e/squat</span>
+              and then click to jump here.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent edits (this browser)</div>
+          <div class="card-body">
+            <div id="recentEdits" class="list"></div>
+            <div class="hint">These are pulled from LocalStorage, not from the base JSON file.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="exerciseView" class="view hidden">
+        <div class="card">
+          <div class="card-title" id="crumbTitle">Exercise</div>
+          <div class="card-body">
+            <div class="crumbs" id="crumbs"></div>
+
+            <div class="divider"></div>
+
+            <div class="grid-2">
+              <div>
+                <div class="section-title">Planned / logged work</div>
+                <div id="workBox" class="workbox"></div>
+                <div class="hint">This is editable in JSON. You can keep it simple: “Top set: 180×3 @8”.</div>
+              </div>
+
+              <div>
+                <div class="section-title">Video links</div>
+
+                <div class="field">
+                  <label>Add a video URL</label>
+                  <div class="row">
+                    <input id="videoInput" placeholder="Paste YouTube/Drive link…" />
+                    <button id="btnAddVideo" class="btn">Add</button>
+                  </div>
+                  <div class="hint">YouTube links will embed automatically. Others show as clickable links.</div>
+                </div>
+
+                <div id="videoList" class="list"></div>
+
+                <div class="field">
+                  <label>Or add a local video/photo (device)</label>
+                  <div class="row">
+                    <input id="mediaFile" type="file" accept="video/*,image/*" />
+                    <button id="btnAddLocalMedia" class="btn secondary">Add local</button>
+                  </div>
+                  <div class="hint">
+                    Works great on mobile for quick review, but <b>local media is stored only on this device</b>.
+                    For shareable high-quality uploads, use a link (YouTube unlisted / Google Drive / iCloud) and paste it above.
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="grid-2">
+              <div>
+                <div class="section-title">Lifter comment</div>
+                <textarea id="lifterComment" class="textarea" rows="6" placeholder="How did it feel? Any notes?"></textarea>
+              </div>
+              <div>
+                <div class="section-title">Coach feedback</div>
+                <textarea id="coachComment" class="textarea" rows="6" placeholder="Technique cues, next steps, feedback…"></textarea>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row space-between">
+              <div class="hint mono" id="lastUpdated"></div>
+              <div class="row">
+                <button id="btnCopyLink" class="btn secondary">Copy link</button>
+                <button id="btnSave" class="btn">Save</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">History for this exercise (this period)</div>
+          <div class="card-body">
+            <div id="exerciseHistory" class="list"></div>
+            <div class="hint">Shows other days/weeks where this same exercise name appears in the selected period.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="searchView" class="view hidden">
+        <div class="card">
+          <div class="card-title">Search results</div>
+          <div class="card-body">
+            <div id="searchResults" class="list"></div>
+            <div class="hint">Click a result to jump directly to that entry.</div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <div class="hint">
+          Built as a static site: works on GitHub Pages/Netlify/Cloudflare Pages.
+          Data edits persist in your browser; export JSON for backup.
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <!-- Manager modal: add/remove periods/blocks/weeks/days/exercises -->
+  <div id="managerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mgrTitle">
+    <div class="modal-backdrop" id="mgrCloseBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div id="mgrTitle" class="modal-title">Structure Manager</div>
+          <div class="hint">Edits update your local base data. Use Export JSON for backups or to publish changes.</div>
+        </div>
+        <button id="mgrCloseBtn" class="btn secondary">Close</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="grid-2">
+          <div class="panel" style="box-shadow:none;background:rgba(8,12,18,.35)">
+            <div class="panel-title">Add</div>
+
+            <div class="field">
+              <label>Add Period</label>
+              <input id="addPeriodName" placeholder="e.g. Serie 2 2026" />
+              <div class="row">
+                <button id="btnAddPeriod" class="btn">Add period</button>
+              </div>
+              <div class="hint">ID is auto-generated from the name.</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Add Block (to selected period)</label>
+              <input id="addBlockId" type="number" min="1" step="1" placeholder="e.g. 2" />
+              <div class="row">
+                <button id="btnAddBlock" class="btn">Add block</button>
+              </div>
+              <div class="hint">Block IDs are numbers (1,2,3...).</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Add Week (to selected block)</label>
+              <input id="addWeekNum" type="number" min="1" step="1" placeholder="e.g. 5" />
+              <div class="row">
+                <button id="btnAddWeek" class="btn">Add week</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Add Day (to selected week)</label>
+              <input id="addDayNum" type="number" min="1" step="1" placeholder="e.g. 3" />
+              <input id="addDayLabel" placeholder="Optional label (e.g. Bench day)" />
+              <div class="row">
+                <button id="btnAddDay" class="btn">Add day</button>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Add Exercise (to selected day)</label>
+              <input id="addExerciseName" placeholder="e.g. Squat" />
+              <input id="addExerciseWork" placeholder="Optional work text (e.g. 3×3 @ 190)" />
+              <div class="row">
+                <button id="btnAddExercise" class="btn">Add exercise</button>
+              </div>
+              <div class="hint">Exercise ID is auto-generated from the name.</div>
+            </div>
+
+          </div>
+
+          <div class="panel" style="box-shadow:none;background:rgba(8,12,18,.35)">
+            <div class="panel-title">Remove</div>
+            <div class="hint">These are permanent in your local base (until you Import an older JSON).</div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Remove selected exercise</label>
+              <button id="btnRemoveExercise" class="btn danger">Remove exercise</button>
+              <div class="hint">Removes the currently selected exercise entry.</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Remove selected day</label>
+              <button id="btnRemoveDay" class="btn danger">Remove day</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Remove selected week</label>
+              <button id="btnRemoveWeek" class="btn danger">Remove week</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Remove selected block</label>
+              <button id="btnRemoveBlock" class="btn danger">Remove block</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="field">
+              <label>Remove selected period</label>
+              <button id="btnRemovePeriod" class="btn danger">Remove period</button>
+              <div class="hint">Careful: removes everything inside that period.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="hint">Tip: After structural changes, your navigation will refresh automatically.</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
