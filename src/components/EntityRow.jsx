@@ -1,7 +1,8 @@
-export default function EntityRow({ label, sub, onOpen, onRename, onDelete }) {
+export default function EntityRow({ label, sub, badge, onOpen, onRename, onDelete }) {
   return (
     <div className="row-card">
       <button className="row-main" onClick={onOpen}>
+        {badge && <span className="badge">{badge}</span>}
         <span>
           {label}
           {sub && <div className="row-sub">{sub}</div>}
