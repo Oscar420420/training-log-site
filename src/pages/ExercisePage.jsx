@@ -1,43 +1,120 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Header from '../components/Header.jsx'
-import RenameModal from '../components/RenameModal.jsx'
 import ComparisonPanel from '../components/ComparisonPanel.jsx'
+import { useMode } from '../ModeContext.jsx'
 import * as db from '../db.js'
+
+function parseRepsRange(value) {
+  const match = value.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/)
+  if (!match) return null
+  const min = Number(match[1])
+  const max = match[2] ? Number(match[2]) : min
+  return { min, max }
+}
+
+function repsRangeText(set) {
+  if (set.targetRepsMin == null) return ''
+  if (set.targetRepsMin === set.targetRepsMax) return String(set.targetRepsMin)
+  return `${set.targetRepsMin}-${set.targetRepsMax}`
+}
+
+function restText(seconds) {
+  if (!seconds) return ''
+  const minutes = seconds / 60
+  return Number.isInteger(minutes) ? String(minutes) : String(Math.round(minutes * 10) / 10)
+}
 
 export default function ExercisePage() {
   const { blockId, weekId, dayId, exerciseId } = useParams()
+  const { mode } = useMode()
   const [block, setBlock] = useState(null)
   const [week, setWeek] = useState(null)
   const [day, setDay] = useState(null)
   const [exercise, setExercise] = useState(null)
+  const [badge, setBadge] = useState(null)
   const [sets, setSets] = useState([])
-  const [weight, setWeight] = useState('')
-  const [reps, setReps] = useState('')
-  const [rpe, setRpe] = useState('')
-  const [editingSet, setEditingSet] = useState(null)
+  const [fields, setFields] = useState({})
 
   async function load() {
-    setBlock(await db.getBlock(blockId))
-    setWeek(await db.getWeek(weekId))
-    setDay(await db.getDay(dayId))
-    setExercise(await db.getExercise(exerciseId))
-    setSets(await db.getSets(exerciseId))
+    const [b, w, d, ex, exList, setList] = await Promise.all([
+      db.getBlock(blockId),
+      db.getWeek(weekId),
+      db.getDay(dayId),
+      db.getExercise(exerciseId),
+      db.getExercises(dayId),
+      db.getSets(exerciseId),
+    ])
+    setBlock(b)
+    setWeek(w)
+    setDay(d)
+    setExercise(ex)
+    const idx = exList.findIndex((e) => e.id === exerciseId)
+    setBadge(idx >= 0 ? String.fromCharCode(65 + idx) : null)
+    setSets(setList)
   }
 
   useEffect(() => {
     load()
   }, [blockId, weekId, dayId, exerciseId])
 
-  async function handleAddSet(e) {
-    e.preventDefault()
-    const w = Number(weight)
-    const r = Number(reps)
-    if (!w || !r) return
-    await db.addSet(exerciseId, { weight: w, reps: r, rpe: rpe ? Number(rpe) : null })
-    setWeight('')
-    setReps('')
-    setRpe('')
+  useEffect(() => {
+    const next = {}
+    for (const set of sets) {
+      next[set.id] = {
+        reps: set.reps ?? '',
+        rpe: set.rpe ?? '',
+        weight: set.weight ?? '',
+        repsRange: repsRangeText(set),
+        targetRPE: set.targetRPE ?? '',
+        rest: restText(set.targetRestSeconds),
+      }
+    }
+    setFields(next)
+  }, [sets])
+
+  function field(setId, key) {
+    return fields[setId]?.[key] ?? ''
+  }
+
+  function setField(setId, key, value) {
+    setFields((prev) => ({ ...prev, [setId]: { ...prev[setId], [key]: value } }))
+  }
+
+  async function commitActual(setId, key, rawValue) {
+    const value = rawValue === '' ? null : Number(rawValue)
+    await db.updateSetActual(setId, { [key]: value })
+    load()
+  }
+
+  async function commitRepsRange(setId, rawValue) {
+    const parsed = parseRepsRange(rawValue)
+    await db.updateSetTarget(setId, {
+      targetRepsMin: parsed?.min ?? null,
+      targetRepsMax: parsed?.max ?? null,
+    })
+    load()
+  }
+
+  async function commitTargetRPE(setId, rawValue) {
+    const value = rawValue === '' ? null : Number(rawValue)
+    await db.updateSetTarget(setId, { targetRPE: value })
+    load()
+  }
+
+  async function commitRest(setId, rawValue) {
+    const minutes = rawValue === '' ? null : Number(rawValue)
+    await db.updateSetTarget(setId, { targetRestSeconds: minutes == null ? null : Math.round(minutes * 60) })
+    load()
+  }
+
+  async function toggleCompleted(set) {
+    await db.updateSetActual(set.id, { completed: !set.completed })
+    load()
+  }
+
+  async function handleAddSet() {
+    await db.addSet(exerciseId, {})
     load()
   }
 
@@ -51,80 +128,123 @@ export default function ExercisePage() {
 
   return (
     <>
-      <Header
-        breadcrumb={`${block.name} › Week ${week.weekNumber} › ${day.name}`}
-        title={exercise.name}
-      />
+      <Header breadcrumb={`${block.name} › Week ${week.weekNumber} › ${day.name}`} title="Exercise" />
       <div className="main">
-        <ComparisonPanel exerciseId={exerciseId} refreshKey={sets.length} />
+        <div className="exercise-header">
+          {badge && <span className="badge">{badge}</span>}
+          <span className="exercise-title">{exercise.name}</span>
+        </div>
 
-        <div className="section-title">Log a set</div>
-        <form className="set-form" onSubmit={handleAddSet}>
-          <input
-            placeholder="Weight"
-            value={weight}
-            inputMode="decimal"
-            onChange={(e) => setWeight(e.target.value)}
-          />
-          <input
-            placeholder="Reps"
-            value={reps}
-            inputMode="numeric"
-            onChange={(e) => setReps(e.target.value)}
-          />
-          <button className="btn" type="submit">
-            Add
-          </button>
-          <div className="set-form-extra">
-            <input
-              placeholder="RPE (optional)"
-              value={rpe}
-              inputMode="decimal"
-              onChange={(e) => setRpe(e.target.value)}
-            />
-          </div>
-        </form>
+        {mode === 'train' && <ComparisonPanel exerciseId={exerciseId} refreshKey={sets.length} />}
 
-        <div className="section-title">Today's sets</div>
-        <div className="card">
-          {sets.length === 0 && <div className="empty-state">No sets logged yet.</div>}
-          {sets.map((set, i) => (
-            <div className="set-row" key={set.id}>
-              <span className="set-index">{i + 1}</span>
-              <span className="set-values">
-                {set.weight} × {set.reps}
-                {set.rpe != null && <span className="set-rpe"> @ RPE {set.rpe}</span>}
-              </span>
-              <div className="row-actions">
-                <button className="icon-btn" onClick={() => setEditingSet(set)} aria-label="Edit">
-                  ✎
-                </button>
-                <button className="icon-btn danger" onClick={() => handleDeleteSet(set)} aria-label="Delete">
+        {mode === 'coach' ? (
+          <div className="set-table">
+            <div className="set-table-cols coach">
+              <span>Set</span>
+              <span>Reps</span>
+              <span>RPE</span>
+              <span>Rest</span>
+              <span></span>
+            </div>
+            {sets.map((set, i) => (
+              <div className="set-table-row" key={set.id}>
+                <span className="set-index">{i + 1}</span>
+                <div className="set-cell">
+                  <input
+                    placeholder="8-12"
+                    value={field(set.id, 'repsRange')}
+                    onChange={(e) => setField(set.id, 'repsRange', e.target.value)}
+                    onBlur={(e) => commitRepsRange(set.id, e.target.value)}
+                  />
+                </div>
+                <div className="set-cell">
+                  <input
+                    placeholder="8.5"
+                    inputMode="decimal"
+                    value={field(set.id, 'targetRPE')}
+                    onChange={(e) => setField(set.id, 'targetRPE', e.target.value)}
+                    onBlur={(e) => commitTargetRPE(set.id, e.target.value)}
+                  />
+                </div>
+                <div className="set-cell">
+                  <input
+                    placeholder="2"
+                    inputMode="decimal"
+                    value={field(set.id, 'rest')}
+                    onChange={(e) => setField(set.id, 'rest', e.target.value)}
+                    onBlur={(e) => commitRest(set.id, e.target.value)}
+                  />
+                  <div className="set-target-hint">min</div>
+                </div>
+                <button className="icon-btn danger" onClick={() => handleDeleteSet(set)} aria-label="Delete set">
                   🗑
                 </button>
               </div>
+            ))}
+            <div className="set-table-footer">
+              <button className="btn secondary full" onClick={handleAddSet}>
+                Add Set
+              </button>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="set-table">
+            <div className="set-table-cols">
+              <span>Set</span>
+              <span>Reps</span>
+              <span>RPE</span>
+              <span>Load</span>
+              <span></span>
+            </div>
+            {sets.map((set, i) => (
+              <div className="set-table-row" key={set.id}>
+                <span className="set-index">{i + 1}</span>
+                <div className="set-cell">
+                  <input
+                    inputMode="numeric"
+                    value={field(set.id, 'reps')}
+                    onChange={(e) => setField(set.id, 'reps', e.target.value)}
+                    onBlur={(e) => commitActual(set.id, 'reps', e.target.value)}
+                  />
+                  {set.targetRepsMin != null && (
+                    <div className="set-target-hint">target {repsRangeText(set)}</div>
+                  )}
+                </div>
+                <div className="set-cell">
+                  <input
+                    inputMode="decimal"
+                    value={field(set.id, 'rpe')}
+                    onChange={(e) => setField(set.id, 'rpe', e.target.value)}
+                    onBlur={(e) => commitActual(set.id, 'rpe', e.target.value)}
+                  />
+                  {set.targetRPE != null && <div className="set-target-hint">target {set.targetRPE}</div>}
+                </div>
+                <div className="set-cell">
+                  <input
+                    placeholder="-"
+                    inputMode="decimal"
+                    value={field(set.id, 'weight')}
+                    onChange={(e) => setField(set.id, 'weight', e.target.value)}
+                    onBlur={(e) => commitActual(set.id, 'weight', e.target.value)}
+                  />
+                </div>
+                <button
+                  className={`set-check ${set.completed ? 'done' : ''}`}
+                  onClick={() => toggleCompleted(set)}
+                  aria-label="Mark set done"
+                >
+                  ✓
+                </button>
+              </div>
+            ))}
+            <div className="set-table-footer">
+              <button className="btn secondary full" onClick={handleAddSet}>
+                Add Set
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-
-      {editingSet && (
-        <RenameModal
-          title="Edit set (weight x reps)"
-          initialValue={`${editingSet.weight}x${editingSet.reps}`}
-          onClose={() => setEditingSet(null)}
-          onSave={async (value) => {
-            const match = value.match(/^\s*([\d.]+)\s*x\s*([\d.]+)\s*$/i)
-            if (!match) {
-              alert('Use the format: weight x reps, e.g. 80x8')
-              return
-            }
-            await db.updateSet(editingSet.id, { weight: Number(match[1]), reps: Number(match[2]) })
-            setEditingSet(null)
-            load()
-          }}
-        />
-      )}
     </>
   )
 }

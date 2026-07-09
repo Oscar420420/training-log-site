@@ -178,6 +178,13 @@ export async function deleteExercise(id) {
 }
 
 // --- Sets ---
+//
+// Each set carries both a coach-authored target (targetRepsMin/Max, targetRPE,
+// targetRestSeconds) and the actual logged result (weight, reps, rpe). Reps
+// and rpe are pre-filled from the target when a set is created so training
+// mode starts from "what the plan says" and only needs weight (and, if the
+// session went differently, a quick edit to reps/rpe) to become "what
+// actually happened".
 
 export async function getSets(exerciseId) {
   const db = await dbPromise
@@ -185,29 +192,56 @@ export async function getSets(exerciseId) {
   return sets.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
-export async function addSet(exerciseId, { weight, reps, rpe, notes }) {
+export async function addSet(
+  exerciseId,
+  { targetRepsMin = null, targetRepsMax = null, targetRPE = null, targetRestSeconds = null } = {}
+) {
   const db = await dbPromise
   const set = {
     id: newId(),
     exerciseId,
-    weight,
-    reps,
-    rpe: rpe ?? null,
-    notes: notes ?? '',
+    targetRepsMin,
+    targetRepsMax,
+    targetRPE,
+    targetRestSeconds,
+    weight: null,
+    reps: targetRepsMax ?? targetRepsMin ?? null,
+    rpe: targetRPE,
+    completed: false,
     createdAt: new Date().toISOString(),
   }
   await db.add('sets', set)
   return set
 }
 
-export async function updateSet(id, { weight, reps, rpe, notes }) {
+// Coach mode: edit the prescription. Only touches target* fields, but also
+// re-syncs the actual reps/rpe to the new target as long as the set hasn't
+// been marked completed yet (so training mode always starts from the
+// current plan without silently overwriting a set you already logged).
+export async function updateSetTarget(id, { targetRepsMin, targetRepsMax, targetRPE, targetRestSeconds }) {
+  const db = await dbPromise
+  const set = await db.get('sets', id)
+  if (!set) return
+  if (targetRepsMin !== undefined) set.targetRepsMin = targetRepsMin
+  if (targetRepsMax !== undefined) set.targetRepsMax = targetRepsMax
+  if (targetRPE !== undefined) set.targetRPE = targetRPE
+  if (targetRestSeconds !== undefined) set.targetRestSeconds = targetRestSeconds
+  if (!set.completed) {
+    if (targetRepsMax !== undefined) set.reps = targetRepsMax ?? set.targetRepsMin ?? null
+    if (targetRPE !== undefined) set.rpe = targetRPE
+  }
+  await db.put('sets', set)
+}
+
+// Training mode: edit the actual logged result. Only touches weight/reps/rpe/completed.
+export async function updateSetActual(id, { weight, reps, rpe, completed }) {
   const db = await dbPromise
   const set = await db.get('sets', id)
   if (!set) return
   if (weight !== undefined) set.weight = weight
   if (reps !== undefined) set.reps = reps
   if (rpe !== undefined) set.rpe = rpe
-  if (notes !== undefined) set.notes = notes
+  if (completed !== undefined) set.completed = completed
   await db.put('sets', set)
 }
 

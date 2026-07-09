@@ -8,8 +8,8 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "..", "public", "icons");
 
-const BG = [15, 23, 42]; // slate-900
-const FG = [56, 189, 248]; // sky-400
+const BG = [5, 7, 15]; // near-black navy
+const FG = [59, 130, 246]; // blue-500
 
 function crc32(buf) {
   let table = crc32.table;

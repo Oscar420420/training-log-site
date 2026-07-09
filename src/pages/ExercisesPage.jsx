@@ -60,9 +60,10 @@ export default function ExercisesPage() {
 
         <div className="list">
           {exercises.length === 0 && <div className="empty-state">No exercises yet. Add your first one above.</div>}
-          {exercises.map((exercise) => (
+          {exercises.map((exercise, i) => (
             <EntityRow
               key={exercise.id}
+              badge={String.fromCharCode(65 + i)}
               label={exercise.name}
               onOpen={() => navigate(`/blocks/${blockId}/weeks/${weekId}/days/${dayId}/exercises/${exercise.id}`)}
               onRename={() => setRenaming(exercise)}
