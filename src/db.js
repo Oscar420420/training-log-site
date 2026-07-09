@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'training-log'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 function normalizeName(name) {
   return name.trim().toLowerCase()
@@ -12,21 +12,27 @@ function newId() {
 }
 
 const dbPromise = openDB(DB_NAME, DB_VERSION, {
-  upgrade(db) {
-    db.createObjectStore('blocks', { keyPath: 'id' })
+  upgrade(db, oldVersion) {
+    if (oldVersion < 1) {
+      db.createObjectStore('blocks', { keyPath: 'id' })
 
-    const weeks = db.createObjectStore('weeks', { keyPath: 'id' })
-    weeks.createIndex('blockId', 'blockId')
+      const weeks = db.createObjectStore('weeks', { keyPath: 'id' })
+      weeks.createIndex('blockId', 'blockId')
 
-    const days = db.createObjectStore('days', { keyPath: 'id' })
-    days.createIndex('weekId', 'weekId')
+      const days = db.createObjectStore('days', { keyPath: 'id' })
+      days.createIndex('weekId', 'weekId')
 
-    const exercises = db.createObjectStore('exercises', { keyPath: 'id' })
-    exercises.createIndex('dayId', 'dayId')
-    exercises.createIndex('normalizedName', 'normalizedName')
+      const exercises = db.createObjectStore('exercises', { keyPath: 'id' })
+      exercises.createIndex('dayId', 'dayId')
+      exercises.createIndex('normalizedName', 'normalizedName')
 
-    const sets = db.createObjectStore('sets', { keyPath: 'id' })
-    sets.createIndex('exerciseId', 'exerciseId')
+      const sets = db.createObjectStore('sets', { keyPath: 'id' })
+      sets.createIndex('exerciseId', 'exerciseId')
+    }
+    if (oldVersion < 2) {
+      const library = db.createObjectStore('exerciseLibrary', { keyPath: 'id' })
+      library.createIndex('normalizedName', 'normalizedName')
+    }
   },
 })
 
@@ -180,11 +186,12 @@ export async function deleteExercise(id) {
 // --- Sets ---
 //
 // Each set carries both a coach-authored target (targetRepsMin/Max, targetRPE,
-// targetRestSeconds) and the actual logged result (weight, reps, rpe). Reps
-// and rpe are pre-filled from the target when a set is created so training
-// mode starts from "what the plan says" and only needs weight (and, if the
-// session went differently, a quick edit to reps/rpe) to become "what
-// actually happened".
+// targetWeight) and the actual logged result (weight, reps, rpe). Reps, rpe
+// and weight are pre-filled from the target when a set is created (or when
+// its target is edited, as long as the set isn't completed yet) so training
+// mode always starts from "what the plan says" and only needs a quick
+// override, if the session went differently, to become "what actually
+// happened".
 
 export async function getSets(exerciseId) {
   const db = await dbPromise
@@ -194,7 +201,7 @@ export async function getSets(exerciseId) {
 
 export async function addSet(
   exerciseId,
-  { targetRepsMin = null, targetRepsMax = null, targetRPE = null, targetRestSeconds = null } = {}
+  { targetRepsMin = null, targetRepsMax = null, targetRPE = null, targetWeight = null } = {}
 ) {
   const db = await dbPromise
   const set = {
@@ -203,8 +210,8 @@ export async function addSet(
     targetRepsMin,
     targetRepsMax,
     targetRPE,
-    targetRestSeconds,
-    weight: null,
+    targetWeight,
+    weight: targetWeight,
     reps: targetRepsMax ?? targetRepsMin ?? null,
     rpe: targetRPE,
     completed: false,
@@ -215,20 +222,21 @@ export async function addSet(
 }
 
 // Coach mode: edit the prescription. Only touches target* fields, but also
-// re-syncs the actual reps/rpe to the new target as long as the set hasn't
-// been marked completed yet (so training mode always starts from the
+// re-syncs the actual reps/rpe/weight to the new target as long as the set
+// hasn't been marked completed yet (so training mode always starts from the
 // current plan without silently overwriting a set you already logged).
-export async function updateSetTarget(id, { targetRepsMin, targetRepsMax, targetRPE, targetRestSeconds }) {
+export async function updateSetTarget(id, { targetRepsMin, targetRepsMax, targetRPE, targetWeight }) {
   const db = await dbPromise
   const set = await db.get('sets', id)
   if (!set) return
   if (targetRepsMin !== undefined) set.targetRepsMin = targetRepsMin
   if (targetRepsMax !== undefined) set.targetRepsMax = targetRepsMax
   if (targetRPE !== undefined) set.targetRPE = targetRPE
-  if (targetRestSeconds !== undefined) set.targetRestSeconds = targetRestSeconds
+  if (targetWeight !== undefined) set.targetWeight = targetWeight
   if (!set.completed) {
     if (targetRepsMax !== undefined) set.reps = targetRepsMax ?? set.targetRepsMin ?? null
     if (targetRPE !== undefined) set.rpe = targetRPE
+    if (targetWeight !== undefined) set.weight = targetWeight
   }
   await db.put('sets', set)
 }
@@ -346,10 +354,15 @@ export async function getBestWeekComparison(exerciseId) {
   }
 }
 
-// --- Quick-add: copy previous week's structure (feature 4) ---
+// --- Quick-add: copy previous week's structure forward (feature 4 / block base) ---
 //
-// Copies every day + exercise name from the given source week into a new
-// week. Only structure is copied, never weights/reps.
+// Copies every day + exercise from the given source week into a new week,
+// including each exercise's set targets (rep range/RPE/weight) so the new
+// week starts as a full copy of the plan, ready to tweak (e.g. bump a
+// weight) rather than rebuilt from scratch. Actual logged results (what was
+// really lifted) are never copied — every new set starts uncompleted with
+// its actual values equal to the copied target, exactly like a fresh set
+// created from that target.
 
 export async function copyWeekStructure(sourceWeekId, targetWeekId) {
   const sourceDays = await getDays(sourceWeekId)
@@ -357,9 +370,56 @@ export async function copyWeekStructure(sourceWeekId, targetWeekId) {
     const newDay = await addDay(targetWeekId, day.name)
     const exercises = await getExercises(day.id)
     for (const exercise of exercises) {
-      await addExercise(newDay.id, exercise.name)
+      const newExercise = await addExercise(newDay.id, exercise.name)
+      const sets = await getSets(exercise.id)
+      for (const set of sets) {
+        await addSet(newExercise.id, {
+          targetRepsMin: set.targetRepsMin,
+          targetRepsMax: set.targetRepsMax,
+          targetRPE: set.targetRPE,
+          targetWeight: set.targetWeight,
+        })
+      }
     }
   }
+}
+
+// --- Exercise library ---
+//
+// A flat, block/week/day-independent list of exercise names you've used
+// before, so building a day's exercise list can be "pick from a list"
+// instead of retyping names every time. Adding a day-exercise with a brand
+// new name also adds it here (see ExercisesPage), so the library grows on
+// its own without a separate curation step.
+
+export async function getLibraryExercises() {
+  const db = await dbPromise
+  const entries = await db.getAll('exerciseLibrary')
+  return entries.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function addLibraryExercise(name) {
+  const db = await dbPromise
+  const normalizedName = normalizeName(name)
+  const existing = await db.getFromIndex('exerciseLibrary', 'normalizedName', normalizedName)
+  if (existing) return existing
+  const entry = { id: newId(), name, normalizedName, createdAt: new Date().toISOString() }
+  await db.add('exerciseLibrary', entry)
+  return entry
+}
+
+export async function updateLibraryExercise(id, name) {
+  const db = await dbPromise
+  const entry = await db.get('exerciseLibrary', id)
+  if (!entry) return
+  entry.name = name
+  entry.normalizedName = normalizeName(name)
+  await db.put('exerciseLibrary', entry)
+}
+
+export async function deleteLibraryExercise(id) {
+  const db = await dbPromise
+  await db.delete('exerciseLibrary', id)
 }
 
 export { normalizeName }

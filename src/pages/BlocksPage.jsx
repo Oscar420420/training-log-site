@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header.jsx'
 import EntityRow from '../components/EntityRow.jsx'
 import RenameModal from '../components/RenameModal.jsx'
+import { LibraryIcon } from '../components/Icons.jsx'
 import * as db from '../db.js'
 
 export default function BlocksPage() {
@@ -38,6 +39,12 @@ export default function BlocksPage() {
     <>
       <Header title="Training Log" showBack={false} />
       <div className="main">
+        <button className="btn secondary full" onClick={() => navigate('/library')}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%' }}>
+            <LibraryIcon /> Exercise Library
+          </span>
+        </button>
+
         <form className="add-form" onSubmit={handleAdd}>
           <input
             placeholder="New block name (e.g. Block 1 - Hypertrophy)"

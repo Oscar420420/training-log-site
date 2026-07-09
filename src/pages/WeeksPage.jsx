@@ -33,9 +33,16 @@ export default function WeeksPage() {
     const newWeek = await db.addWeek(blockId, num)
     setWeekNumber('')
 
-    const prevWeek = weeks.find((w) => w.weekNumber === num - 1)
-    if (prevWeek && confirm(`Copy the day/exercise structure from Week ${prevWeek.weekNumber}? (Only names are copied, not weights.)`)) {
-      await db.copyWeekStructure(prevWeek.id, newWeek.id)
+    // Copy from the closest earlier week; if adding out of order (e.g. this
+    // is the earliest week so far), fall back to the block's first week so
+    // there's always a "base" to build from.
+    const earlierWeeks = weeks.filter((w) => w.weekNumber < num).sort((a, b) => b.weekNumber - a.weekNumber)
+    const sourceWeek = earlierWeeks[0] ?? weeks.slice().sort((a, b) => a.weekNumber - b.weekNumber)[0]
+    if (
+      sourceWeek &&
+      confirm(`Copy the plan from Week ${sourceWeek.weekNumber} (days, exercises, and set targets)? You can tweak the numbers afterward.`)
+    ) {
+      await db.copyWeekStructure(sourceWeek.id, newWeek.id)
     }
     load()
   }
