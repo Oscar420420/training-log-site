@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useMode } from '../ModeContext.jsx'
+import { ChevronLeftIcon } from './Icons.jsx'
 
 export default function Header({ breadcrumb, title, showBack = true }) {
   const navigate = useNavigate()
@@ -10,7 +11,7 @@ export default function Header({ breadcrumb, title, showBack = true }) {
       <div className="header-row">
         {showBack && (
           <button className="back-btn" onClick={() => navigate(-1)} aria-label="Back">
-            ‹
+            <ChevronLeftIcon />
           </button>
         )}
         <div className="header-titles">

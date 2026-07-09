@@ -1,3 +1,5 @@
+import { PencilIcon, TrashIcon } from './Icons.jsx'
+
 export default function EntityRow({ label, sub, badge, onOpen, onRename, onDelete }) {
   return (
     <div className="row-card">
@@ -11,12 +13,12 @@ export default function EntityRow({ label, sub, badge, onOpen, onRename, onDelet
       <div className="row-actions">
         {onRename && (
           <button className="icon-btn" onClick={onRename} aria-label="Rename">
-            ✎
+            <PencilIcon />
           </button>
         )}
         {onDelete && (
           <button className="icon-btn danger" onClick={onDelete} aria-label="Delete">
-            🗑
+            <TrashIcon />
           </button>
         )}
       </div>

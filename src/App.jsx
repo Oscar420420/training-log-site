@@ -5,6 +5,7 @@ import WeeksPage from './pages/WeeksPage.jsx'
 import DaysPage from './pages/DaysPage.jsx'
 import ExercisesPage from './pages/ExercisesPage.jsx'
 import ExercisePage from './pages/ExercisePage.jsx'
+import LibraryPage from './pages/LibraryPage.jsx'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <div className="app">
           <Routes>
             <Route path="/" element={<BlocksPage />} />
+            <Route path="/library" element={<LibraryPage />} />
             <Route path="/blocks/:blockId" element={<WeeksPage />} />
             <Route path="/blocks/:blockId/weeks/:weekId" element={<DaysPage />} />
             <Route path="/blocks/:blockId/weeks/:weekId/days/:dayId" element={<ExercisesPage />} />

@@ -12,6 +12,7 @@ export default function ExercisesPage() {
   const [week, setWeek] = useState(null)
   const [day, setDay] = useState(null)
   const [exercises, setExercises] = useState([])
+  const [library, setLibrary] = useState([])
   const [name, setName] = useState('')
   const [renaming, setRenaming] = useState(null)
 
@@ -20,6 +21,7 @@ export default function ExercisesPage() {
     setWeek(await db.getWeek(weekId))
     setDay(await db.getDay(dayId))
     setExercises(await db.getExercises(dayId))
+    setLibrary(await db.getLibraryExercises())
   }
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export default function ExercisesPage() {
     const trimmed = name.trim()
     if (!trimmed) return
     await db.addExercise(dayId, trimmed)
+    await db.addLibraryExercise(trimmed)
     setName('')
     load()
   }
@@ -49,10 +52,16 @@ export default function ExercisesPage() {
       <div className="main">
         <form className="add-form" onSubmit={handleAdd}>
           <input
-            placeholder="Exercise name (e.g. Bench Press)"
+            placeholder="Exercise name (pick or type new)"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            list="exercise-library-options"
           />
+          <datalist id="exercise-library-options">
+            {library.map((entry) => (
+              <option key={entry.id} value={entry.name} />
+            ))}
+          </datalist>
           <button className="btn" type="submit">
             Add
           </button>

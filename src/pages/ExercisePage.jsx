@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Header from '../components/Header.jsx'
 import ComparisonPanel from '../components/ComparisonPanel.jsx'
+import { TrashIcon, CheckIcon } from '../components/Icons.jsx'
 import { useMode } from '../ModeContext.jsx'
 import * as db from '../db.js'
 
@@ -19,10 +20,12 @@ function repsRangeText(set) {
   return `${set.targetRepsMin}-${set.targetRepsMax}`
 }
 
-function restText(seconds) {
-  if (!seconds) return ''
-  const minutes = seconds / 60
-  return Number.isInteger(minutes) ? String(minutes) : String(Math.round(minutes * 10) / 10)
+function targetSummary(set) {
+  const parts = []
+  if (set.targetRepsMin != null) parts.push(`${repsRangeText(set)} reps`)
+  if (set.targetRPE != null) parts.push(`RPE ${set.targetRPE}`)
+  if (set.targetWeight != null) parts.push(`${set.targetWeight} kg`)
+  return parts.join(' · ')
 }
 
 export default function ExercisePage() {
@@ -67,7 +70,7 @@ export default function ExercisePage() {
         weight: set.weight ?? '',
         repsRange: repsRangeText(set),
         targetRPE: set.targetRPE ?? '',
-        rest: restText(set.targetRestSeconds),
+        targetWeight: set.targetWeight ?? '',
       }
     }
     setFields(next)
@@ -102,9 +105,9 @@ export default function ExercisePage() {
     load()
   }
 
-  async function commitRest(setId, rawValue) {
-    const minutes = rawValue === '' ? null : Number(rawValue)
-    await db.updateSetTarget(setId, { targetRestSeconds: minutes == null ? null : Math.round(minutes * 60) })
+  async function commitTargetWeight(setId, rawValue) {
+    const value = rawValue === '' ? null : Number(rawValue)
+    await db.updateSetTarget(setId, { targetWeight: value })
     load()
   }
 
@@ -139,11 +142,11 @@ export default function ExercisePage() {
 
         {mode === 'coach' ? (
           <div className="set-table">
-            <div className="set-table-cols coach">
+            <div className="set-table-cols">
               <span>Set</span>
               <span>Reps</span>
               <span>RPE</span>
-              <span>Rest</span>
+              <span>Weight</span>
               <span></span>
             </div>
             {sets.map((set, i) => (
@@ -168,16 +171,15 @@ export default function ExercisePage() {
                 </div>
                 <div className="set-cell">
                   <input
-                    placeholder="2"
+                    placeholder="kg"
                     inputMode="decimal"
-                    value={field(set.id, 'rest')}
-                    onChange={(e) => setField(set.id, 'rest', e.target.value)}
-                    onBlur={(e) => commitRest(set.id, e.target.value)}
+                    value={field(set.id, 'targetWeight')}
+                    onChange={(e) => setField(set.id, 'targetWeight', e.target.value)}
+                    onBlur={(e) => commitTargetWeight(set.id, e.target.value)}
                   />
-                  <div className="set-target-hint">min</div>
                 </div>
                 <button className="icon-btn danger" onClick={() => handleDeleteSet(set)} aria-label="Delete set">
-                  🗑
+                  <TrashIcon />
                 </button>
               </div>
             ))}
@@ -196,47 +198,49 @@ export default function ExercisePage() {
               <span>Load</span>
               <span></span>
             </div>
-            {sets.map((set, i) => (
-              <div className="set-table-row" key={set.id}>
-                <span className="set-index">{i + 1}</span>
-                <div className="set-cell">
-                  <input
-                    inputMode="numeric"
-                    value={field(set.id, 'reps')}
-                    onChange={(e) => setField(set.id, 'reps', e.target.value)}
-                    onBlur={(e) => commitActual(set.id, 'reps', e.target.value)}
-                  />
-                  {set.targetRepsMin != null && (
-                    <div className="set-target-hint">target {repsRangeText(set)}</div>
-                  )}
+            {sets.map((set, i) => {
+              const summary = targetSummary(set)
+              return (
+                <div className="set-block" key={set.id}>
+                  {summary && <div className="set-target-summary">Coach: {summary}</div>}
+                  <div className="set-table-row">
+                    <span className="set-index">{i + 1}</span>
+                    <div className="set-cell">
+                      <input
+                        inputMode="numeric"
+                        value={field(set.id, 'reps')}
+                        onChange={(e) => setField(set.id, 'reps', e.target.value)}
+                        onBlur={(e) => commitActual(set.id, 'reps', e.target.value)}
+                      />
+                    </div>
+                    <div className="set-cell">
+                      <input
+                        inputMode="decimal"
+                        value={field(set.id, 'rpe')}
+                        onChange={(e) => setField(set.id, 'rpe', e.target.value)}
+                        onBlur={(e) => commitActual(set.id, 'rpe', e.target.value)}
+                      />
+                    </div>
+                    <div className="set-cell">
+                      <input
+                        placeholder="-"
+                        inputMode="decimal"
+                        value={field(set.id, 'weight')}
+                        onChange={(e) => setField(set.id, 'weight', e.target.value)}
+                        onBlur={(e) => commitActual(set.id, 'weight', e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className={`set-check ${set.completed ? 'done' : ''}`}
+                      onClick={() => toggleCompleted(set)}
+                      aria-label="Mark set done"
+                    >
+                      <CheckIcon />
+                    </button>
+                  </div>
                 </div>
-                <div className="set-cell">
-                  <input
-                    inputMode="decimal"
-                    value={field(set.id, 'rpe')}
-                    onChange={(e) => setField(set.id, 'rpe', e.target.value)}
-                    onBlur={(e) => commitActual(set.id, 'rpe', e.target.value)}
-                  />
-                  {set.targetRPE != null && <div className="set-target-hint">target {set.targetRPE}</div>}
-                </div>
-                <div className="set-cell">
-                  <input
-                    placeholder="-"
-                    inputMode="decimal"
-                    value={field(set.id, 'weight')}
-                    onChange={(e) => setField(set.id, 'weight', e.target.value)}
-                    onBlur={(e) => commitActual(set.id, 'weight', e.target.value)}
-                  />
-                </div>
-                <button
-                  className={`set-check ${set.completed ? 'done' : ''}`}
-                  onClick={() => toggleCompleted(set)}
-                  aria-label="Mark set done"
-                >
-                  ✓
-                </button>
-              </div>
-            ))}
+              )
+            })}
             <div className="set-table-footer">
               <button className="btn secondary full" onClick={handleAddSet}>
                 Add Set

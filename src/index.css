@@ -1,9 +1,9 @@
 :root {
   color-scheme: dark;
   --bg: #05070f;
-  --surface: #0f1626;
-  --surface-2: #17203a;
-  --border: #232e4d;
+  --surface: #10192e;
+  --surface-2: #182544;
+  --border: #24304f;
   --text: #f4f6fb;
   --muted: #8393b8;
   --accent: #3b82f6;
@@ -11,7 +11,9 @@
   --accent-soft: rgba(59, 130, 246, 0.16);
   --danger: #f87171;
   --danger-strong: #ef4444;
-  --radius: 14px;
+  --radius: 16px;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 * {
@@ -26,7 +28,10 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(900px 500px at 15% -5%, rgba(59, 130, 246, 0.1), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(37, 99, 235, 0.08), transparent 55%),
+    var(--bg);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
@@ -54,8 +59,8 @@ select {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: rgba(5, 7, 15, 0.92);
-  backdrop-filter: blur(8px);
+  background: rgba(5, 7, 15, 0.85);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   padding: 10px 14px calc(10px + env(safe-area-inset-top, 0));
   padding-top: max(10px, env(safe-area-inset-top, 0));
@@ -80,10 +85,14 @@ select {
   width: 40px;
   height: 40px;
   min-width: 40px;
-  font-size: 20px;
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.back-btn:active {
+  background: var(--surface-2);
 }
 
 .breadcrumb {
@@ -97,6 +106,7 @@ select {
   font-size: 19px;
   font-weight: 800;
   margin-top: 2px;
+  letter-spacing: -0.01em;
 }
 
 .mode-toggle {
@@ -117,10 +127,11 @@ select {
   padding: 7px 12px;
   border-radius: 999px;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .mode-toggle button.active {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
   color: #04101f;
 }
 
@@ -129,7 +140,7 @@ select {
   padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .list {
@@ -146,6 +157,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 4px;
+  box-shadow: var(--shadow-sm);
 }
 
 .row-main {
@@ -160,9 +172,10 @@ select {
   color: var(--text);
   text-align: left;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
+  transition: background 0.15s ease;
 }
 
 .row-main:active {
@@ -188,16 +201,20 @@ select {
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  color: var(--text);
+  color: var(--muted);
   display: grid;
   place-items: center;
   cursor: pointer;
-  font-size: 16px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-btn:active {
+  color: var(--text);
 }
 
 .icon-btn.danger {
   color: var(--danger);
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .badge {
@@ -217,8 +234,10 @@ select {
 .empty-state {
   color: var(--muted);
   text-align: center;
-  padding: 32px 12px;
+  padding: 36px 12px;
   font-size: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
 }
 
 .add-form {
@@ -228,6 +247,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px;
+  box-shadow: var(--shadow-sm);
 }
 
 .add-form input {
@@ -241,7 +261,7 @@ select {
 }
 
 .btn {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
   color: #04101f;
   border: none;
   border-radius: 10px;
@@ -250,10 +270,12 @@ select {
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
 
 .btn:active {
-  background: var(--accent-strong);
+  filter: brightness(0.92);
+  transform: translateY(1px);
 }
 
 .btn.secondary {
@@ -268,10 +290,10 @@ select {
 
 .section-title {
   font-weight: 800;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   margin-top: 4px;
 }
 
@@ -280,6 +302,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .comparison {
@@ -287,6 +310,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .comparison-toggle {
@@ -302,6 +326,7 @@ select {
   color: var(--muted);
   font-weight: 700;
   cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .comparison-toggle button.active {
@@ -355,8 +380,9 @@ select {
 }
 
 .exercise-title {
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 /* --- Set table (training / coach set list) --- */
@@ -366,6 +392,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .set-table-cols {
@@ -374,14 +401,21 @@ select {
   gap: 8px;
   padding: 10px 12px 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
-.set-table-cols.coach {
-  grid-template-columns: 34px 1fr 1fr 1fr 40px;
+.set-block {
+  border-top: 1px solid var(--border);
+}
+
+.set-target-summary {
+  padding: 8px 12px 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .set-table-row {
@@ -390,6 +424,9 @@ select {
   gap: 8px;
   align-items: center;
   padding: 8px 12px;
+}
+
+.set-table > .set-table-row {
   border-top: 1px solid var(--border);
 }
 
@@ -412,12 +449,12 @@ select {
   width: 100%;
   font-weight: 700;
   text-align: center;
+  transition: border-color 0.15s ease;
 }
 
-.set-target-hint {
-  color: var(--muted);
-  font-size: 11px;
-  text-align: center;
+.set-cell input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .set-check {
@@ -431,6 +468,7 @@ select {
   cursor: pointer;
   color: transparent;
   justify-self: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .set-check.done {
@@ -446,20 +484,10 @@ select {
   border-top: 1px solid var(--border);
 }
 
-.set-form-extra {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 8px;
-}
-
-.set-form-extra input {
-  flex: 1;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -469,13 +497,14 @@ select {
 .modal-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px 18px 0 0;
+  border-radius: 20px 20px 0 0;
   padding: 16px;
   width: 100%;
   max-width: 640px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: var(--shadow);
 }
 
 @media (min-width: 640px) {
@@ -483,6 +512,6 @@ select {
     align-items: center;
   }
   .modal-card {
-    border-radius: 18px;
+    border-radius: 20px;
   }
 }
