@@ -77,7 +77,10 @@ exerciseLibrary { id, name, normalizedName, createdAt }         index: normalize
      8-12 reps · RPE 8.5 · 60 kg" summary line, and the reps/RPE/weight
      inputs are pre-filled from that target so you usually just confirm or
      tweak. A checkmark circle marks a set done. The Last week/Best week
-     panel sits above the table.
+     panel sits above the table. A floating "Next exercise" pill (bottom
+     right, matching the reference app) appears whenever there's a
+     following exercise in the same day and jumps straight to it — it's
+     absent on the last exercise of a day.
 5. **Exercise Library** (`src/pages/LibraryPage.jsx`, route `/library`,
    linked from the home screen) — a flat, reusable list of exercise names.
    Adding an exercise to a day shows a `<datalist>` autocomplete sourced from

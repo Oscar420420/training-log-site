@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import Header from '../components/Header.jsx'
 import ComparisonPanel from '../components/ComparisonPanel.jsx'
-import { TrashIcon, CheckIcon } from '../components/Icons.jsx'
+import { TrashIcon, CheckIcon, ArrowRightIcon } from '../components/Icons.jsx'
 import { useMode } from '../ModeContext.jsx'
 import * as db from '../db.js'
 
@@ -30,12 +30,14 @@ function targetSummary(set) {
 
 export default function ExercisePage() {
   const { blockId, weekId, dayId, exerciseId } = useParams()
+  const navigate = useNavigate()
   const { mode } = useMode()
   const [block, setBlock] = useState(null)
   const [week, setWeek] = useState(null)
   const [day, setDay] = useState(null)
   const [exercise, setExercise] = useState(null)
   const [badge, setBadge] = useState(null)
+  const [nextExercise, setNextExercise] = useState(null)
   const [sets, setSets] = useState([])
   const [fields, setFields] = useState({})
 
@@ -54,6 +56,7 @@ export default function ExercisePage() {
     setExercise(ex)
     const idx = exList.findIndex((e) => e.id === exerciseId)
     setBadge(idx >= 0 ? String.fromCharCode(65 + idx) : null)
+    setNextExercise(idx >= 0 ? exList[idx + 1] ?? null : null)
     setSets(setList)
   }
 
@@ -132,7 +135,7 @@ export default function ExercisePage() {
   return (
     <>
       <Header breadcrumb={`${block.name} › Week ${week.weekNumber} › ${day.name}`} title="Exercise" />
-      <div className="main">
+      <div className="main" style={nextExercise ? { paddingBottom: 76 } : undefined}>
         <div className="exercise-header">
           {badge && <span className="badge">{badge}</span>}
           <span className="exercise-title">{exercise.name}</span>
@@ -247,6 +250,23 @@ export default function ExercisePage() {
               </button>
             </div>
           </div>
+        )}
+
+        {nextExercise && (
+          <button
+            className="next-exercise-btn"
+            onClick={() =>
+              navigate(`/blocks/${blockId}/weeks/${weekId}/days/${dayId}/exercises/${nextExercise.id}`)
+            }
+          >
+            <span className="next-exercise-text">
+              <span className="next-exercise-label">Next exercise</span>
+              <span className="next-exercise-name">{nextExercise.name}</span>
+            </span>
+            <span className="next-exercise-arrow">
+              <ArrowRightIcon />
+            </span>
+          </button>
         )}
       </div>
     </>
