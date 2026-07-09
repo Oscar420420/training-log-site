@@ -515,3 +515,57 @@ select {
     border-radius: 20px;
   }
 }
+
+.next-exercise-btn {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: 999px;
+  padding: 8px 8px 8px 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  max-width: calc(100% - 32px);
+}
+
+.next-exercise-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+.next-exercise-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5b6472;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.next-exercise-name {
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 46vw;
+}
+
+.next-exercise-arrow {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+}
